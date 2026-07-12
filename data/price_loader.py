@@ -26,9 +26,8 @@ class EpisodeWindow:
 
 class PriceCSVLoader:
     """
-    Loads a CSV with columns 'Datetime (Local)' and 'Price (EUR/MWhe)'
-    (the Ember Energy export format), and splits it chronologically into
-    train / validation periods.
+    Loads a CSV with columns 'Datetime (Local)' and 'Price (EUR/MWhe)', and splits it 
+    chronologically into train / validation periods.
     """
 
     def __init__(
