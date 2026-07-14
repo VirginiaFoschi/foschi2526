@@ -248,6 +248,7 @@ class EVChargingEnvDiscrete(gym.Env):
             action=action,
             soc=self._battery.soc,
             cost_eur=cost_eur,
+            hour_of_day=self._episode.arrival_hour + self._t,
             capped=meta.get("capped", False),
         )
 
