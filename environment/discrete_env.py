@@ -291,7 +291,7 @@ def make_train_val_envs(
 
 if __name__ == "__main__":
     # Smoke test: random policy for a handful of episodes on train + val.
-    train_env, val_env = make_train_val_envs("./Germany.csv")
+    train_env, val_env = make_train_val_envs("./data/Germany.csv")
 
     for name, env in [("train", train_env), ("val", val_env)]:
         rng = np.random.default_rng(0)
