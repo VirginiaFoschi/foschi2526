@@ -89,7 +89,6 @@ class EVChargingEnvDiscrete(gym.Env):
       - Departure: fixed at 07:00 the next day.
       - Action (per hour): 0 = idle, 1 = charge at 50% (5.5 kW), 2 = charge at 100% (11 kW).
       - Reward (per hour): -cost of energy drawn from the grid this hour (EUR);
-        price can be negative, in which case the agent is paid to charge.
         A one-off penalty for any shortfall below `target_soc` is added to the
         reward on the final step of the episode.
     """
@@ -101,8 +100,8 @@ class EVChargingEnvDiscrete(gym.Env):
         *,
         prices_csv_path: str,
         split: str = "train",                       # "train" or "val"
-        train_years: Tuple[int, int] = (2022, 2024),
-        val_years: Tuple[int, int] = (2025, 2025),
+        train_years: Tuple[int, int] = (2021, 2023),
+        val_years: Tuple[int, int] = (2024, 2025),
         battery_capacity_kwh: float = 60.0,
         charging_efficiency: float = 0.90,
         target_soc: float = 0.80,
@@ -114,7 +113,7 @@ class EVChargingEnvDiscrete(gym.Env):
         soc_n_bins: int = 10,
         price_bin_mode: str = "percentile",           # "percentile" or "equal_width"
         loader: Optional[PriceCSVLoader] = None,       # reuse a loader across train/val envs
-        quantizers: Optional[Dict[str, Quantizer]] = None,  # reuse quantizers (fit on train only!)
+        quantizers: Optional[Dict[str, Quantizer]] = None,  # reuse quantizers
     ):
         super().__init__()
 
@@ -127,8 +126,7 @@ class EVChargingEnvDiscrete(gym.Env):
         self.shortfall_penalty_per_kwh = shortfall_penalty_per_kwh
         self.arrival_soc_range = arrival_soc_range
 
-        # price data: reuse a shared loader if one is passed in, so a
-        # train env and a val env agree on the exact same split boundaries (also to avoid unecessary work)
+        # reuse a shared loader if available so a train env and a val env agree on the exact same split boundaries
         self.loader = loader if loader is not None else PriceCSVLoader(
             prices_csv_path,
             train_years=train_years,
@@ -141,7 +139,7 @@ class EVChargingEnvDiscrete(gym.Env):
         self.action_space = spaces.Discrete(3)
         self.battery_model_cls = EVBatteryModel
 
-        # quantizers: quantizer looks just at training data to create bins
+        #quantizer looks just at training data to create bins
         if quantizers is None: #in the training env it will enter here
             train_overnight_prices = self.loader.overnight_train_prices()
             self.quantizers = {
@@ -173,7 +171,7 @@ class EVChargingEnvDiscrete(gym.Env):
         self._battery: Optional[EVBatteryModel] = None
         self._t = 0  # index into the current episode's price array
 
-    #called at the beginning at the beginningof every episode
+    #called at the beginning of every episode
     def reset(
         self,
         *,
@@ -215,7 +213,7 @@ class EVChargingEnvDiscrete(gym.Env):
         reward = -cost_eur
 
         self._t += 1
-        terminated = False  # no failure state — shortfall is penalized, not terminal
+        terminated = False  #no failure case in this environment, so terminated is always False
         truncated = self._t >= self._episode.n_hours
 
         if truncated:
@@ -248,7 +246,7 @@ class EVChargingEnvDiscrete(gym.Env):
             action=action,
             soc=self._battery.soc,
             cost_eur=cost_eur,
-            hour_of_day=self._episode.arrival_hour + self._t,
+            hour_of_day=(self._episode.arrival_hour + self._t) % 24,
             capped=meta.get("capped", False),
         )
 
@@ -290,7 +288,6 @@ def make_train_val_envs(
 
 
 if __name__ == "__main__":
-    # Smoke test: random policy for a handful of episodes on train + val.
     train_env, val_env = make_train_val_envs("./data/Germany.csv")
 
     for name, env in [("train", train_env), ("val", val_env)]:

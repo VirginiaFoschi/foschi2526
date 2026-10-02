@@ -11,16 +11,7 @@ class BasePolicy(ABC):
         """Return a discrete action: 0=idle, 1=half, 2=full."""
         raise NotImplementedError
 
-
-class RandomPolicy(BasePolicy):
-    def __init__(self, action_space, seed: int = 0):
-        self.action_space = action_space
-        self.action_space.seed(seed)
-
-    def act(self, obs: DiscreteState) -> int:
-        return int(self.action_space.sample())
-
-
+# Baseline strategy: charge at full power whenever the SoC is below the target value
 class NaiveImmediateChargePolicy(BasePolicy):
 
     def __init__(self, soc_quantizer: Quantizer, target_soc: float):

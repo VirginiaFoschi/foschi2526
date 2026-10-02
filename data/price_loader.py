@@ -1,8 +1,7 @@
 """
-Loads the Ember Energy day-ahead price CSV , cleans it onto a strict hourly
-grid, and exposes chronological train / validation splits plus the set of
-valid "episode anchor days" (calendar days for which a full arrival -> 07:00
-departure window of hourly prices exists).
+Loads the Ember Energy electricity price data, cleans and organizes it into hourly values, and separates 
+the data into training and validation periods. It also identifies days with complete price 
+data from 17:00 until 07:00 the next day, which can be used as overnight charging episodes.
 """
 
 from __future__ import annotations
@@ -19,23 +18,23 @@ class EpisodeWindow:
     """Everything needed to run one overnight charging episode."""
     date: pd.Timestamp          # calendar day of arrival
     arrival_hour: int           # 17..20
-    prices: np.ndarray          # EUR/MWh, one value per hour, arrival -> 06:00 (inclusive)
-    hours: np.ndarray           # hour-of-day (0..23) aligned with `prices`
+    prices: np.ndarray          # EUR/MWh, one value per hour, till arrival -> 06:00 (inclusive)
+    hours: np.ndarray           # hour-of-day (0..23) aligned with prices
     n_hours: int                # len(prices)
 
 
 class PriceCSVLoader:
     """
     Loads a CSV with columns 'Datetime (Local)' and 'Price (EUR/MWhe)', and splits it 
-    chronologically into train / validation periods.
+    chronologically into train / validation sets.
     """
 
     def __init__(
         self,
         csv_path: str,
         *,
-        train_years: Tuple[int, int] = (2022, 2024),
-        val_years: Tuple[int, int] = (2025, 2025),
+        train_years: Tuple[int, int] = (2021, 2023),
+        val_years: Tuple[int, int] = (2024, 2025),
         arrival_hour_range: Tuple[int, int] = (17, 20),  # inclusive
         departure_hour: int = 7,
     ):
@@ -66,7 +65,7 @@ class PriceCSVLoader:
 
         full_idx = pd.date_range(df.index.min(), df.index.max(), freq="h")
         df = df.reindex(full_idx)
-        df["price"] = df["price"].interpolate(limit=3)  # fixes rare DST gaps
+        df["price"] = df["price"].interpolate(limit=3) 
         df.index.name = "dt"
         return df
 
@@ -78,10 +77,10 @@ class PriceCSVLoader:
     def _build_episode_windows(self, price_df: pd.DataFrame) -> List[EpisodeWindow]:
         """Every calendar day in `price_df` for which arrival(17-20h) -> 07:00
         next day is fully covered by hourly prices becomes a candidate episode.
-        The actual arrival hour is sampled at reset() time, not here — this
+        The actual arrival hour is sampled at reset() time (not here, this
         just pre-slices, per day, the widest possible window (17:00 -> 07:00)
         so that any arrival_hour in the allowed range can be selected later
-        without re-touching the source dataframe."""
+        without re-touching the source dataframe)"""
         windows = []
         if len(price_df) == 0:
             return windows
@@ -111,8 +110,7 @@ class PriceCSVLoader:
     def sample_episode(self, split: str, rng: np.random.Generator) -> EpisodeWindow:
         """Sample a random day from the split, then a random arrival hour
         within `arrival_hour_range`, and slice out the actual price/hour
-        arrays the episode will use. Used for TRAINING resets, where visiting
-        nights in random order (with repetition) is desirable."""
+        arrays the episode will use"""
         candidates = self.episodes[split]
         if not candidates:
             raise RuntimeError(f"No valid episodes available for split '{split}'.")
@@ -123,7 +121,7 @@ class PriceCSVLoader:
     def chronological_episodes(self, split: str, rng: np.random.Generator) -> List[EpisodeWindow]:
         """Every candidate night in the split, IN DATE ORDER, exactly once —
         only the arrival hour is randomized (via `rng`, for reproducibility).
-        Use this for evaluating/plotting a policy's performance over time;
+        Used for evaluating/plotting a policy's performance over time;
         `sample_episode` alone would give a random walk that can repeat or
         skip nights, which is fine for training but meaningless for a
         chronological cumulative-reward plot."""
@@ -145,7 +143,7 @@ class PriceCSVLoader:
         )
 
     def overnight_train_prices(self) -> np.ndarray:
-        """All training-set prices within the 17:00-07:00 window — used to fit
-        price quantizers / thresholds without ever touching validation data."""
+        """All training-set prices within the 17:00-07:00 window (used to fit
+        price quantizers / thresholds without ever touching validation data)"""
         mask = (self.train_df.index.hour >= 17) | (self.train_df.index.hour < self.departure_hour)
         return self.train_df.loc[mask, "price"].to_numpy(dtype=np.float32)

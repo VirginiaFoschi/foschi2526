@@ -12,15 +12,13 @@ from .baseline import BasePolicy, NaiveImmediateChargePolicy
 
 @dataclass
 class RolloutSignals:
-    """Step-level signals concatenated across many episodes (nights), plus
-    per-episode summaries"""
 
     t: np.ndarray                    # global step index (0..N-1), across all episodes
-    episode_idx: np.ndarray          # which episode (0..n_episodes-1) each step belongs to
+    episode_idx: np.ndarray          
 
     action: np.ndarray
     price: np.ndarray
-    soc: np.ndarray                  # raw (continuous) SoC, from info — for plotting only
+    soc: np.ndarray                  
     hours_until_departure: np.ndarray
     hour_of_day: np.ndarray
     reward: np.ndarray
@@ -40,10 +38,12 @@ def rollout(
     seed: Optional[int] = None,
 ) -> RolloutSignals:
     """
-    Roll out overnight charging sessions back-to-back, recording every step.
-    Each episode is an independent env.reset() (a different historical night,
-    arrival hour, and arrival SoC), concatenated here purely for
-    plotting/analysis convenience
+    Run multiple independent overnight charging episodes and record
+    the step-by-step results. Each episode starts with env.reset() and
+    represents a separate historical night with its own arrival time
+    and initial SoC. The episode data are concatenated only for
+    visualization and offline analysis; no transition occurs between
+    episodes.
     """
     if (episode_windows is None):
         raise ValueError("Pass exactly one of `n_episodes` or `episode_windows`.")

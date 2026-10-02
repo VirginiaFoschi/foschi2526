@@ -1,15 +1,3 @@
-"""
-Show what the trained Q-learning agent has learned, in the most literal,
-human-readable terms: which wall-clock HOUR does it charge, and how much
-(idle / half / full)? Compared directly against the naive "charge
-immediately on arrival" policy, using the fixed 07:00 departure.
-
-All plots are built from rolling the (frozen, greedy) trained policy and the
-naive policy out over the real historical nights — not from reading the
-Q-table directly — since that's what's actually comparable and intuitive:
-"what does the agent DO", not "what number is in which cell".
-"""
-
 from __future__ import annotations
 from typing import Any, Tuple
 
@@ -25,9 +13,6 @@ ACTION_NAMES = {0: "idle", 1: "half (50%)", 2: "full (100%)"}
 ACTION_POWER_KW = {0: 0.0, 1: 5.5, 2: 11.0}
 ACTION_COLORS = ["#dddddd", "#f6a04d", "#d1362f"]
 
-# fixed 07:00 departure -> this is the natural chronological hour order for
-# the x-axis of every plot below (arrival window on the left, 07:00 deadline
-# on the right)
 HOUR_ORDER = list(range(17, 24)) + list(range(0, 7))
 
 
@@ -43,10 +28,7 @@ def _reindex_by_hour_order(hours: np.ndarray, values: np.ndarray, agg="mean"):
     return np.array(out)
 
 
-# ----------------------------------------------------------------------
-# 1. "In which hour does it charge, and how much?" — stacked action shares
-#    by wall-clock hour, with the average price overlaid for context.
-# ----------------------------------------------------------------------
+# "In which hour does it charge, and how much?" 
 def plot_action_by_hour(sig: RolloutSignals, title: str):
     n_hours = len(HOUR_ORDER)
     shares = np.zeros((n_hours, 3))
@@ -86,11 +68,7 @@ def plot_action_by_hour(sig: RolloutSignals, title: str):
     return fig, ax
 
 
-# ----------------------------------------------------------------------
-# 2. Agent vs naive: average charging power drawn, by hour of day — the
-#    direct "how does the agent's behavior differ from just plugging in"
-#    comparison.
-# ----------------------------------------------------------------------
+# Agent vs naive: average charging power drawn, by hour of day
 def plot_power_by_hour_comparison(agent_sig: RolloutSignals, naive_sig: RolloutSignals, title: str):
     agent_power = np.array([ACTION_POWER_KW[a] for a in agent_sig.action])
     naive_power = np.array([ACTION_POWER_KW[a] for a in naive_sig.action])
@@ -127,10 +105,7 @@ def plot_power_by_hour_comparison(agent_sig: RolloutSignals, naive_sig: RolloutS
     return fig, ax1
 
 
-# ----------------------------------------------------------------------
-# 3. Price paid, conditional on action (agent only) — confirms it charges
-#    preferentially at low prices.
-# ----------------------------------------------------------------------
+# Price paid, conditional on action (agent only) 
 def plot_price_by_action(sig: RolloutSignals, title: str):
     fig, ax = plt.subplots(figsize=(7, 4.5))
     data = [sig.price[sig.action == a] for a in (0, 1, 2)]
@@ -144,49 +119,6 @@ def plot_price_by_action(sig: RolloutSignals, title: str):
     return fig, ax
 
 
-# ----------------------------------------------------------------------
-# 4. Concrete example nights: agent vs naive, side by side, same night.
-# ----------------------------------------------------------------------
-# def plot_example_night_comparison(env, agent_policy, naive_policy, window, title_prefix: str = "Example night"):
-#     fig, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
-
-#     for ax, policy, label in zip(axes, (naive_policy, agent_policy), ("Naive", "Q-learning")):
-#         obs, info = env.reset(options={"episode_window": window})
-#         prices, actions, socs = [], [], []
-#         terminated = truncated = False
-#         while not (terminated or truncated):
-#             a = policy.act(obs)
-#             obs, r, terminated, truncated, info = env.step(a)
-#             prices.append(env._episode.prices[info["step"] - 1])
-#             actions.append(a)
-#             socs.append(info["soc"])
-
-#         x = np.arange(len(prices))
-#         ax2 = ax.twinx()
-#         ax.plot(x, prices, color="black", lw=1.3, label="price (EUR/MWh)")
-#         ax.set_ylabel("price (EUR/MWh)")
-
-#         for a in (0, 1, 2):
-#             mask = np.array(actions) == a
-#             if mask.any():
-#                 ax.scatter(x[mask], np.array(prices)[mask], color=ACTION_COLORS[a],
-#                            s=70, zorder=5, label=ACTION_NAMES[a], edgecolor="black", linewidth=0.5)
-
-#         ax2.plot(x, socs, color="tab:blue", lw=1.5, ls="--", label="SoC")
-#         ax2.set_ylabel("SoC", color="tab:blue")
-#         ax2.tick_params(axis="y", labelcolor="tab:blue")
-#         ax2.set_ylim(0, 1.05)
-
-#         total_cost = sum(ACTION_POWER_KW[a] * p / 1000.0 for a, p in zip(actions, prices))
-#         ax.set_title(f"{label} — total cost this night: {total_cost:.2f} EUR")
-#         ax.legend(loc="upper left", fontsize=8)
-
-#     axes[-1].set_xlabel("hour index (from arrival)")
-#     fig.suptitle(f"{title_prefix}: {window.date.date()}, arrival {window.arrival_hour}:00", y=1.02)
-#     plt.tight_layout()
-#     plt.show()
-#     return fig, axes
-
 def plot_cumulative_cost(
     *,
     sigs: dict,  # {label: RolloutSignals}
@@ -194,8 +126,8 @@ def plot_cumulative_cost(
 ) -> Tuple[Any, Any]:
     """
     Each policy's own cumulative SPEND over time, in positive EUR (cost =
-    -reward) — so unlike a raw cumulative-reward plot, "up" here means
-    "spent more", which is the intuitive reading. Plotting multiple
+    -reward) (so "up" here means
+    "spent more") Plotting multiple
     policies on the same axes makes the savings visible directly as the
     widening gap between their cost curves, not just as a derived delta.
     """

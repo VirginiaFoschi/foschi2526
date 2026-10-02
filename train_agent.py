@@ -1,7 +1,7 @@
 """
 Train the tabular Q-learning agent on EVChargingEnvDiscrete, then evaluate
-the greedy policy against the naive baseline — chronologically,
-on both train and validation — to see whether learning actually beat them.
+the greedy policy against the naive baseline (chronologically,
+on both train and validation) to see whether learning actually beat them.
 """
 
 import time
@@ -17,15 +17,11 @@ from agent.rollout_env import rollout
 from agent.q_learning_agent import QLearning
 from agent.utils import Experience, LinearSchedule
 
-
-# ----------------------------------------------------------------------
-# Hyperparameters
-# ----------------------------------------------------------------------
 N_TRAINING_EPISODES = 30_000    # random nights sampled (with repetition) from train split
 DISCOUNT = 0.95                  # gamma
 LEARNING_RATE_START = 0.10       # alpha — decays to LEARNING_RATE_END if DECAY_LEARNING_RATE=True
 LEARNING_RATE_END = 0.02
-DECAY_LEARNING_RATE = True       # constant alpha never lets the Q-table settle; see conversation
+DECAY_LEARNING_RATE = True       
 EPS_START, EPS_END = 1.0, 0.05   # epsilon-greedy schedule
 EPS_DECAY_FRACTION = 0.8         # decay eps to EPS_END over this fraction of total env steps
 QVAL_INIT = 0.0
@@ -69,11 +65,6 @@ def train(train_env, n_episodes: int, seed: int = SEED, val_env=None, val_window
     window = deque(maxlen=100)
     smoothed_rewards = np.zeros(n_episodes, dtype=float)
 
-    # If I froze the agent's current knowledge and made
-    # it always pick its best guess (no randomness at all 
-    # because otherwise with epsilon-greedy the agent would act partly randomly)
-    # how would it do on the exact same fixed set of validation nights, 
-    # every single time I check?
     eval_episode_idx: List[int] = []
     eval_mean_reward: List[float] = []
 
@@ -114,13 +105,10 @@ def train(train_env, n_episodes: int, seed: int = SEED, val_env=None, val_window
             print(f"  episode {ep + 1:>6}/{n_episodes}  "
                   f"smoothed_reward(last100, eps-greedy)={smoothed_rewards[ep]:7.3f}  "
                   f"eps={eps_now:.3f}  alpha={alpha_now:.3f}  "
-                  f"|Q|={len(agent.Q)} states visited  "
-                  f"({elapsed:.1f}s elapsed)")
+                  f"|Q|={len(agent.Q)} states visited  ")
 
-    print(f"Training done in {time.time() - t0:.1f}s. "
-          f"{len(agent.Q)} distinct states visited "
-          f"(out of up to {SOC_N_BINS * MAX_HOURS_UNTIL_DEPARTURE * PRICE_N_BINS} possible "
-          f"in the reduced (soc, hours_left, price) state space).")
+    print(f"Training done. "
+          f"{len(agent.Q)}/{SOC_N_BINS * MAX_HOURS_UNTIL_DEPARTURE * PRICE_N_BINS} distinct states visited")
 
     eval_curve = (np.array(eval_episode_idx), np.array(eval_mean_reward)) if eval_episode_idx else None
     return agent, episode_rewards, smoothed_rewards, eval_curve
@@ -177,13 +165,7 @@ def main():
                   f"total = {sig.episode_total_reward.sum():9.1f} EUR")
 
     print("\n\n")
-    print("SUMMARY: mean reward per night (higher / less negative = better)")
-    header = f"{'policy':<12}{'train':>12}{'validation':>12}"
-    print(header)
-    for p in ("naive", "qlearning"):
-        row = f"{p:<12}{results[(p,'train')].episode_total_reward.mean():>12.3f}" \
-              f"{results[(p,'val')].episode_total_reward.mean():>12.3f}"
-        print(row)
+    print("REMEMBER: mean reward per night (higher / less negative = better)")
 
 
     # Save the trained agent

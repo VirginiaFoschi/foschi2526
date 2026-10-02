@@ -48,7 +48,7 @@ class EVBatteryModel:
         power_kw = self.POWER_LEVELS_KW[action]
 
         #Energy drawn from the grid in one hour at power P (kW): E [kWh] = P * delta_time_h
-        energy_from_grid_kwh = power_kw * delta_time_h #delta_time_h says how much time we charge at that power (in our case is always 1 hour)
+        energy_from_grid_kwh = power_kw * delta_time_h #delta_time_h says how much time we charge at that power (in our case is always 1 hour since each action last one hour)
 
         #Energy actually stored in the battery: E_battery = E_grid * charging_efficiency
         energy_to_battery_kwh = energy_from_grid_kwh * self.charging_efficiency
@@ -77,8 +77,8 @@ class EVBatteryModel:
 
 def rollout(actions: Sequence[int], prices: Sequence[float], initial_soc: float = 0.3,
             battery_capacity_kwh: float = 60.0, charging_efficiency: float = 0.90):
-    """Runs the battery model for a sequence of (action, price) pairs — one
-    overnight episode"""
+    """Runs the battery model for a sequence of (action, price) pairs (one
+    overnight episode)"""
     model = EVBatteryModel(battery_capacity_kwh, charging_efficiency, initial_soc)
 
     soc_trace, cost_trace, capped_trace = [], [], []
@@ -92,7 +92,6 @@ def rollout(actions: Sequence[int], prices: Sequence[float], initial_soc: float 
     return soc_trace, cost_trace, capped_trace
 
 if __name__ == "__main__":
-    # quick smoke test: a fixed "always full power" policy vs "always idle"
     rng = np.random.default_rng(0)
     demo_prices = 50 + 30 * np.sin(np.linspace(0, 3.14, 14)) + rng.normal(0, 5, 14)
     demo_hours = list(range(17, 24)) + list(range(0, 7))

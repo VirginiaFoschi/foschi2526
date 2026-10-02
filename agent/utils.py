@@ -61,7 +61,7 @@ class LinearSchedule(Schedule):
 
 class QEpsGreedyAgent(ABC):
     """Abstract tabular agent: holds self.Q (defaultdict: state -> list of
-    action-values) and selects actions epsilon-greedily w.r.t. it."""
+    action-values) and selects actions epsilon-greedily wrt it"""
 
     def __init__(
         self,
